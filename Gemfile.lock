@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    datamapa (0.0.2)
+    datamapa (0.0.3)
 
 GEM
   remote: https://rubygems.org/
