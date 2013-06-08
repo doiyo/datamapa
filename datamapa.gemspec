@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["doinchi@gmail.com"]
   spec.description   = 'A minimalistic Data Mapper for removing model dependency on Active Record'
   spec.summary       = 'Data Mapper using Active Record'
-  spec.homepage      = 'http://rubygems.org/gems/datamapa'
+  spec.homepage      = 'https://github.com/doiyo/datamapa'
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)

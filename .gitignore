@@ -4,15 +4,16 @@
 .bundle
 .config
 coverage
+Gemfile.lock
 InstalledFiles
 lib/bundler/man
 pkg
 rdoc
+Session.vim
 spec/reports
 test/tmp
 test/version_tmp
 tmp
-Session.vim
 
 # YARD artifacts
 .yardoc
