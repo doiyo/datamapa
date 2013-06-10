@@ -73,14 +73,14 @@ module DataMapa
       @simple_attr.each do |attr|
         setter = "#{attr.to_s.chomp('?')}="
         object.send(setter, relational.send(attr))
-      end
+      end if @simple_attr
     end
 
     def r2o_ref(relational, object)
       @ref_attr.each do |attr, mapper|
         setter = "#{attr}="
         object.send(setter, mapper.to_model(relational.send(attr)))
-      end
+      end if @ref_attr
     end
 
     def r2o_collection(ar, model, attributes)
@@ -94,14 +94,14 @@ module DataMapa
     def o2r_attr(object, relational)
       @simple_attr.each do |attr|
         relational.send("#{attr.to_s.chomp('?')}=", object.send(attr))
-      end
+      end if @simple_attr
     end
 
     def o2r_ref(object, relational)
       @ref_attr.each_key do |attr|
         ref = object.send(attr)
         relational.send("#{attr.to_s.chomp('?')}_id=", ref.id) unless ref.nil?
-      end
+      end if @ref_attr
     end
 
     def o2r_collection(object, relational, attributes)

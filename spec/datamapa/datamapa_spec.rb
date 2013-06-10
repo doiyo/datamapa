@@ -20,9 +20,9 @@ describe DataMapa do
 
       active_record_class ar_class
       model_constructor model_class.method(:new)
-      simple_attr attributes[:simple] || []
-      ref_attr attributes[:ref] || {}
-      collection_attr attributes[:collection] || {}
+      simple_attr attributes[:simple] if attributes[:simple]
+      ref_attr attributes[:ref] if attributes[:ref]
+      collection_attr attributes[:collection] if attributes[:collection]
     end
   end
 
