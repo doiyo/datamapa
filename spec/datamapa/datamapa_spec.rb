@@ -14,12 +14,13 @@ describe DataMapa do
     end
   end
 
-  def mapper_class(ar_class, model_class, attributes)
+  def mapper_class(ar_class, model_class, attributes, create_model_proc)
     Class.new do
       include DataMapa
 
       active_record_class ar_class
-      model_constructor model_class.method(:new)
+      #model_constructor model_class.method(:new)
+      creates_model_with &create_model_proc
       simple_attr attributes[:simple] if attributes[:simple]
       ref_attr attributes[:ref] if attributes[:ref]
       collection_attr attributes[:collection] if attributes[:collection]
@@ -31,10 +32,13 @@ describe DataMapa do
   describe "simple attribute" do
     let(:ar_class) { class_with_attributes([:id, :a1]) }
     let(:model_class) { class_with_attributes([:id, :a1]) }
-    let(:mapper) { mapper_class(
-      ar_class, model_class,
-      simple: [:id, :a1]
-    ) }
+    let(:mapper) do
+      mapper_class(
+        ar_class, model_class,
+        { simple: [:id, :a1] },
+        lambda { |rec| model_class.new }
+      )
+    end
 
     it "converts to model" do
       ar = stub(id: 1, a1: 'any string')
@@ -59,11 +63,16 @@ describe DataMapa do
     let(:ar_class) { class_with_attributes([:id, :a1_id]) }
     let(:model_class) { class_with_attributes([:id, :a1]) }
     let(:a1_model) { any_object }
-    let(:mapper) { mapper_class(
-      ar_class, model_class,
-      simple: [:id],
-      ref: { a1: stub(to_model: a1_model) }
-    ) }
+    let(:mapper) do
+      mapper_class(
+        ar_class, model_class,
+        {
+          simple: [:id],
+          ref: { a1: stub(to_model: a1_model) }
+        },
+        lambda { |rec| model_class.new }
+      )
+    end
     
     it "converts to model without option" do
       ar = stub(id: 1, a1: nil)
@@ -89,11 +98,16 @@ describe DataMapa do
     let(:model_class) { class_with_attributes([:id, :a1]) }
     let(:a1_model) { any_object }
     let(:a1_ar) { any_object }
-    let(:mapper) { mapper_class(
-      ar_class, model_class, 
-      simple: [:id],
-      collection: {a1: stub(to_model: a1_model, to_ar: a1_ar)}
-    ) }
+    let(:mapper) do
+      mapper_class(
+        ar_class, model_class, 
+        {
+          simple: [:id],
+          collection: {a1: stub(to_model: a1_model, to_ar: a1_ar)}
+        },
+        lambda { |rec| model_class.new }
+      )
+    end 
     
     it "converts to model with option" do
       ar = stub(id: 1, a1: [Object.new, Object.new])
@@ -137,7 +151,13 @@ describe DataMapa do
   describe "attribute in AR only" do
     let(:ar_class) { class_with_attributes([:id, :a1]) }
     let(:model_class) { class_with_attributes([:id]) }
-    let(:mapper) { mapper_class(ar_class, model_class, simple: [:id]) }
+    let(:mapper) do
+      mapper_class(
+        ar_class, model_class,
+        { simple: [:id] },
+        lambda { |rec| model_class.new }
+      )
+    end
     
     it "converts to model" do
       ar = stub(id: 1, a1: 'any string')
@@ -160,7 +180,13 @@ describe DataMapa do
   describe "attribute in model only" do
     let(:ar_class) { class_with_attributes([:id]) }
     let(:model_class) { class_with_attributes([:id, :a1]) }
-    let(:mapper) { mapper_class(ar_class, model_class, simple: [:id]) }
+    let(:mapper) do
+      mapper_class(
+        ar_class, model_class,
+        { simple: [:id] },
+        lambda { |rec| model_class.new }
+      )
+    end
     
     it "converts to model" do
       ar = stub(id: 1)

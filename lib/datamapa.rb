@@ -15,6 +15,10 @@ module DataMapa
       @model_constructor = method
     end
 
+    def creates_model_with(&block)
+      @create_model_proc = block
+    end
+
     def simple_attr(attributes)
       @simple_attr = attributes
     end
@@ -39,7 +43,7 @@ module DataMapa
     end
 
     def to_model(ar, options={})
-      model = @model_constructor.call
+      model = @create_model_proc.call(ar)
 
       r2o_simple(ar, model)
       r2o_ref(ar, model)
@@ -62,8 +66,8 @@ module DataMapa
         ar = to_ar(model)
         ar.save!
         model.send(:id=, ar.id)
-      rescue ActiveRecord::StatementInvalid
-        raise DataMapa::DuplicateKeyError
+      rescue ActiveRecord::StatementInvalid => e
+        raise DataMapa::PersistenceError, e.message
       end
     end
 
@@ -114,9 +118,12 @@ module DataMapa
     end
   end
 
-  class RecordNotFoundError < StandardError
+  class PersistenceError < StandardError
   end
 
-  class DuplicateKeyError < StandardError
+  class RecordNotFoundError < PersistenceError
+  end
+
+  class DuplicateKeyError < PersistenceError
   end
 end
