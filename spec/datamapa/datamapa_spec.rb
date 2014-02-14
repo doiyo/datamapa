@@ -6,6 +6,9 @@ require 'datamapa'
 
 describe DataMapa do
 
+  class Mapper
+  end
+
   def class_with_attributes(attributes)
     Class.new do
       attributes.each do |attr|
@@ -14,153 +17,160 @@ describe DataMapa do
     end
   end
 
-  def mapper_class(ar_class, model_class, attributes, create_model_proc)
+  def mapper_class(class_name, attributes)
     Class.new do
       include DataMapa
 
-      active_record_class ar_class
-      #model_constructor model_class.method(:new)
-      creates_model_with &create_model_proc
-      simple_attr attributes[:simple] if attributes[:simple]
-      ref_attr attributes[:ref] if attributes[:ref]
-      collection_attr attributes[:collection] if attributes[:collection]
+      active_record_class attributes[:active_record_class]
+      creates_model_with &attributes[:creates_model_with]
+      simple_attr attributes[:simple_attr] if attributes[:simple_attr]
+      ref_attr attributes[:ref_attr] if attributes[:ref_attr]
+      collection_attr attributes[:collection_attr] if attributes[:collection_attr]
+
+      # Provide name because this mapper class is anonymous
+      define_singleton_method :name do
+        class_name
+      end
     end
   end
 
   let (:any_object) { Object.new }
 
   describe "simple attribute" do
-    let(:ar_class) { class_with_attributes([:id, :a1]) }
-    let(:model_class) { class_with_attributes([:id, :a1]) }
+    let(:ar_class) { class_with_attributes([:id, :attribute]) }
+    let(:model_class) { class_with_attributes([:id, :attribute]) }
     let(:mapper) do
       mapper_class(
-        ar_class, model_class,
-        { simple: [:id, :a1] },
-        lambda { |rec| model_class.new }
+        'SimpleMapper',
+        active_record_class: ar_class,
+        creates_model_with: lambda { |rec| model_class.new },
+        simple_attr: [:id, :attribute]
       )
     end
 
     it "converts to model" do
-      ar = stub(id: 1, a1: 'any string')
+      ar = stub(id: 1, attribute: 'any string')
 
       model = mapper.to_model(ar)
 
       model.id.must_equal ar.id
-      model.a1.must_equal ar.a1
+      model.attribute.must_equal ar.attribute
     end
 
     it "converts to ar" do
-      model = stub(id: nil, a1: 'any string')
+      model = stub(id: nil, attribute: 'any string')
 
       ar = mapper.to_ar(model)
 
       ar.id.must_equal model.id
-      ar.a1.must_equal model.a1
+      ar.attribute.must_equal model.attribute
     end
   end
 
   describe "ref attribute" do
-    let(:ar_class) { class_with_attributes([:id, :a1_id]) }
-    let(:model_class) { class_with_attributes([:id, :a1]) }
-    let(:a1_model) { any_object }
+    let(:model_class) { class_with_attributes([:id, :object]) }
+    let(:ar_class) { class_with_attributes([:id, :object_id]) }
     let(:mapper) do
       mapper_class(
-        ar_class, model_class,
-        {
-          simple: [:id],
-          ref: { a1: stub(to_model: a1_model) }
-        },
-        lambda { |rec| model_class.new }
+        'RefMapper',
+        active_record_class: ar_class,
+        creates_model_with: lambda { |rec| model_class.new },
+        simple_attr: [:id],
+        ref_attr: { object: Mapper }
       )
     end
     
     it "converts to model without option" do
-      ar = stub(id: 1, a1: nil)
+      ar = stub(id: 1, object: nil)
+      ref = any_object
+      Mapper.stubs(to_model: ref)
 
       model = mapper.to_model(ar)
 
       model.id.must_equal ar.id
-      model.a1.must_equal a1_model
+      model.object.must_equal ref
     end
 
     it "converts to AR" do
-      model = stub(id: nil, a1: stub(id: 10))
+      model = stub(id: nil, object: stub(id: 10))
 
       ar = mapper.to_ar(model)
 
       ar.id.must_equal model.id
-      ar.a1_id.must_equal model.a1.id
+      ar.object_id.must_equal model.object.id
     end
   end
 
   describe "collection attribute" do
-    let(:ar_class) { class_with_attributes([:id, :a1]) }
-    let(:model_class) { class_with_attributes([:id, :a1]) }
-    let(:a1_model) { any_object }
-    let(:a1_ar) { any_object }
+    let(:ar_class) { class_with_attributes([:id, :collection]) }
+    let(:model_class) { class_with_attributes([:id, :collection]) }
     let(:mapper) do
       mapper_class(
-        ar_class, model_class, 
-        {
-          simple: [:id],
-          collection: {a1: stub(to_model: a1_model, to_ar: a1_ar)}
-        },
-        lambda { |rec| model_class.new }
+        'CollectionMapper',
+        active_record_class: ar_class,
+        creates_model_with: lambda { |rec| model_class.new },
+        simple_attr: [:id],
+        collection_attr: { collection: Mapper }
       )
     end 
     
     it "converts to model with option" do
-      ar = stub(id: 1, a1: [Object.new, Object.new])
+      Mapper.stubs(where: [any_object, any_object])
+      model_instance = any_object
+      Mapper.stubs(to_model: model_instance)
 
-      model = mapper.to_model(ar, include: [:a1])
+      ar = stub(id: 1)
+
+      model = mapper.to_model(ar, include: [:collection])
 
       model.id.must_equal ar.id
-      model.a1[0].must_equal a1_model
-      model.a1[1].must_equal a1_model
+      model.collection[0].must_equal model_instance
+      model.collection[1].must_equal model_instance
     end
 
     it "does not convert to model without option" do
-      ar = stub(id: 1, a1: [Object.new, Object.new])
+      ar = stub(id: 1, collection: [any_object])
 
       model = mapper.to_model(ar)
 
       model.id.must_equal ar.id
-      model.a1.must_equal nil
+      model.collection.must_equal nil
     end
 
-    it "converts to AR with option" do
-      model = stub(id: nil, a1: [Object.new, Object.new])
+    #it "converts to AR with option" do
+    #  model = stub(id: nil, attribute: [Object.new, Object.new])
 
-      ar = mapper.to_ar(model, include: [:a1])
+    #  ar = mapper.to_ar(model, include: [:attribute])
 
-      ar.id.must_equal model.id
-      ar.a1[0].must_equal a1_ar
-      ar.a1[1].must_equal a1_ar
-    end
+    #  ar.id.must_equal model.id
+    #  ar.attribute[0].must_equal attribute
+    #  ar.attribute[1].must_equal attribute
+    #end
 
     it "does not convert to AR without option" do
-      model = stub(id: nil, a1: [Object.new, Object.new])
+      model = stub(id: nil, collection: [any_object])
 
       ar = mapper.to_ar(model)
 
       ar.id.must_equal model.id
-      ar.a1.must_equal nil
+      ar.collection.must_equal nil
     end
   end
 
   describe "attribute in AR only" do
-    let(:ar_class) { class_with_attributes([:id, :a1]) }
+    let(:ar_class) { class_with_attributes([:id, :attribute]) }
     let(:model_class) { class_with_attributes([:id]) }
     let(:mapper) do
       mapper_class(
-        ar_class, model_class,
-        { simple: [:id] },
-        lambda { |rec| model_class.new }
+        'AttributeMapper',
+        active_record_class: ar_class,
+        creates_model_with: lambda { |rec| model_class.new },
+        simple_attr: [:id]
       )
     end
     
     it "converts to model" do
-      ar = stub(id: 1, a1: 'any string')
+      ar = stub(id: 1, attribute: 'any string')
 
       model = mapper.to_model(ar)
 
@@ -173,18 +183,19 @@ describe DataMapa do
       ar = mapper.to_ar(model)
 
       ar.id.must_equal model.id
-      ar.a1.must_equal nil
+      ar.attribute.must_equal nil
     end
   end
 
   describe "attribute in model only" do
     let(:ar_class) { class_with_attributes([:id]) }
-    let(:model_class) { class_with_attributes([:id, :a1]) }
+    let(:model_class) { class_with_attributes([:id, :attribute]) }
     let(:mapper) do
       mapper_class(
-        ar_class, model_class,
-        { simple: [:id] },
-        lambda { |rec| model_class.new }
+        'AttributeMapper',
+        active_record_class: ar_class,
+        creates_model_with: lambda { |rec| model_class.new },
+        simple_attr: [:id]
       )
     end
     
@@ -194,11 +205,11 @@ describe DataMapa do
       model = mapper.to_model(ar)
 
       model.id.must_equal ar.id
-      model.a1.must_equal nil
+      model.attribute.must_equal nil
     end
 
     it "converts to AR" do
-      model = stub(id: nil, a1: 'any string')
+      model = stub(id: nil, attribute: 'any string')
 
       ar = mapper.to_ar(model)
 
