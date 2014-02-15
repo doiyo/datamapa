@@ -14,6 +14,10 @@ describe DataMapa do
       attributes.each do |attr|
         attr_accessor attr
       end
+
+      def initialize(id=nil)
+        @id = id
+      end
     end
   end
 
@@ -57,10 +61,15 @@ describe DataMapa do
       model.attribute.must_equal ar.attribute
     end
 
-    it "converts to ar" do
-      model = stub(id: nil, attribute: 'any string')
+    it "saves existing object" do
+      model = model_class.new(1)
+      model.attribute = 'any string'
+      ar = ar_class.new
+      ar.expects(:save!)
 
-      ar = mapper.to_ar(model)
+      ar_class.stubs(:find).with(1).returns(ar)
+
+      mapper.save!(model)
 
       ar.id.must_equal model.id
       ar.attribute.must_equal model.attribute
@@ -91,10 +100,15 @@ describe DataMapa do
       model.object.must_equal ref
     end
 
-    it "converts to AR" do
-      model = stub(id: nil, object: stub(id: 10))
+    it "saves existing object" do
+      model = model_class.new(1)
+      model.object = stub(id: 10)
+      ar = ar_class.new
+      ar.expects(:save!)
 
-      ar = mapper.to_ar(model)
+      ar_class.stubs(:find).with(1).returns(ar)
+
+      mapper.save!(model)
 
       ar.id.must_equal model.id
       ar.object_id.must_equal model.object.id
@@ -147,10 +161,15 @@ describe DataMapa do
     #  ar.attribute[1].must_equal attribute
     #end
 
-    it "does not convert to AR without option" do
-      model = stub(id: nil, collection: [any_object])
+    it "does not save without option" do
+      model = model_class.new(1)
+      model.collection = [any_object]
 
-      ar = mapper.to_ar(model)
+      ar = ar_class.new
+      ar.expects(:save!)
+      ar_class.expects(:find).returns(ar)
+
+      mapper.save!(model)
 
       ar.id.must_equal model.id
       ar.collection.must_equal nil
@@ -177,10 +196,14 @@ describe DataMapa do
       model.id.must_equal ar.id
     end
 
-    it "converts to AR" do
-      model = stub(id: nil)
+    it "saves existing object" do
+      model = model_class.new(1)
 
-      ar = mapper.to_ar(model)
+      ar = ar_class.new
+      ar.expects(:save!)
+      ar_class.expects(:find).returns(ar)
+
+      mapper.save!(model)
 
       ar.id.must_equal model.id
       ar.attribute.must_equal nil
@@ -208,10 +231,15 @@ describe DataMapa do
       model.attribute.must_equal nil
     end
 
-    it "converts to AR" do
-      model = stub(id: nil, attribute: 'any string')
+    it "saves existing object" do
+      model = model_class.new(1)
+      model.attribute = 'any string'
 
-      ar = mapper.to_ar(model)
+      ar = ar_class.new
+      ar.expects(:save!)
+      ar_class.expects(:find).returns(ar)
+
+      mapper.save!(model)
 
       ar.id.must_equal model.id
     end

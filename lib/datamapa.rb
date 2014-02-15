@@ -1,4 +1,5 @@
-require "datamapa/version"
+require 'datamapa/version'
+require 'active_record'
 
 module DataMapa
   def self.included(base)
@@ -11,12 +12,12 @@ module DataMapa
       @ar_class = klass
     end
 
-    def model_constructor(method)
-      @model_constructor = method
-    end
-
     def creates_model_with(&block)
       @create_model_proc = block
+    end
+
+    def semantic_key(key)
+      @semantic_key = key
     end
 
     def simple_attr(attributes)
@@ -40,14 +41,10 @@ module DataMapa
     end
 
     # Public methods
-    def to_ar(model, options={})
-      ar = model.id ? @ar_class.find(model.id) : @ar_class.new
-
+    def o2r(model, ar, options={})
       o2r_attr(model, ar)
       o2r_ref(model, ar)
       o2r_collection(model, ar, options[:include]) if options[:include]
-
-      ar
     end
 
     def to_model(ar, options={})
@@ -74,16 +71,28 @@ module DataMapa
       records.map { |ar| to_model(ar, include: [@composed_of.keys]) }
     end
 
+    def find_ar_with_semantic_key(model)
+      clause = @semantic_key.inject({}) { |memo, attr| memo[attr] = model.send(attr) }
+      @ar_class.find(clause)
+    end
+
     def save!(model, extras={})
       begin
-        ar = to_ar(model)
+        if model.id.nil?
+          ar = find_ar_with_semantic_key(model) || @ar_class.new
+        else
+          ar = @ar_class.find(model.id)
+        end
+
+        o2r(model, ar)
+
         extras.each_pair { |key, value| ar.send("#{key}=", value) }
         ar.save!
         model.send(:id=, ar.id)
 
         @composed_of.each do |parts, mapper|
           mapper.save_parts!(model.send(parts))
-        end
+        end if @composed_of
       rescue ActiveRecord::StatementInvalid => e
         raise DataMapa::PersistenceError, e.message
       end
