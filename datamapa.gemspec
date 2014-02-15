@@ -22,5 +22,6 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency 'rake', '~> 10.1.1'
   spec.add_development_dependency 'minitest', '~> 4.2'
-  spec.add_development_dependency 'mocha', '~> 1.0.0'
+  spec.add_development_dependency 'mocha', '~> 0.14.0'
+  spec.add_development_dependency 'bourne', '~> 1.5.0'
 end

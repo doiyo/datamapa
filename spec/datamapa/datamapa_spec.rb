@@ -2,6 +2,7 @@ require 'rubygems'
 gem 'minitest'
 require 'minitest/autorun'
 require 'mocha/setup'
+require 'bourne'
 require 'datamapa'
 
 describe DataMapa do
@@ -17,6 +18,8 @@ describe DataMapa do
 
       def initialize(id=nil)
         @id = id
+      end
+      def save!
       end
     end
   end
@@ -67,7 +70,7 @@ describe DataMapa do
       ar = ar_class.new
       ar.expects(:save!)
 
-      ar_class.stubs(:find).with(1).returns(ar)
+      ar_class.stubs(:find).returns(ar)
 
       mapper.save!(model)
 
@@ -106,7 +109,7 @@ describe DataMapa do
       ar = ar_class.new
       ar.expects(:save!)
 
-      ar_class.stubs(:find).with(1).returns(ar)
+      ar_class.stubs(:find).returns(ar)
 
       mapper.save!(model)
 
@@ -167,7 +170,7 @@ describe DataMapa do
 
       ar = ar_class.new
       ar.expects(:save!)
-      ar_class.expects(:find).returns(ar)
+      ar_class.stubs(:find).returns(ar)
 
       mapper.save!(model)
 
@@ -201,7 +204,7 @@ describe DataMapa do
 
       ar = ar_class.new
       ar.expects(:save!)
-      ar_class.expects(:find).returns(ar)
+      ar_class.stubs(:find).returns(ar)
 
       mapper.save!(model)
 
@@ -237,7 +240,7 @@ describe DataMapa do
 
       ar = ar_class.new
       ar.expects(:save!)
-      ar_class.expects(:find).returns(ar)
+      ar_class.stubs(:find).returns(ar)
 
       mapper.save!(model)
 
