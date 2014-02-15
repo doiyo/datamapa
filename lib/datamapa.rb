@@ -47,20 +47,18 @@ module DataMapa
       o2r_collection(model, ar, options[:include]) if options[:include]
     end
 
-    def to_model(ar, options={})
-      model = @create_model_proc.call(ar)
-
+    def r2o(ar, model)
       r2o_simple(ar, model)
       r2o_ref(ar, model)
-      r2o_collection(ar, model, options[:include]) if options[:include]
+      r2o_collection(ar, model, @composed_of) if @composed_of
 
       model
     end
 
     def find!(id)
       begin
-        relational = @ar_class.find(id)
-        to_model(relational, include: [@composed_of.keys])
+        ar = @ar_class.find(id)
+        model_for(ar)
       rescue ActiveRecord::RecordNotFound
         raise DataMapa::RecordNotFoundError
       end
@@ -68,11 +66,17 @@ module DataMapa
 
     def where(clause)
       records = @ar_class.where(clause) 
-      records.map { |ar| to_model(ar, include: [@composed_of.keys]) }
+      records.map do |ar|
+        model_for(ar)
+      end
     end
 
     def find_ar_with_semantic_key(model)
-      clause = @semantic_key.inject({}) { |memo, attr| memo[attr] = model.send(attr) }
+      clause = @semantic_key.inject({}) do |memo, attr|
+        memo[attr] = model.send(attr)
+        memo
+      end
+
       @ar_class.find(clause)
     end
 
@@ -112,6 +116,13 @@ module DataMapa
       count = @ar_class.delete(id)
     end
 
+    def model_for(ar)
+      model = @create_model_proc.call(ar)
+      r2o(ar, model)
+      model.id = ar.id
+      model
+    end
+
     private
 
     def delete_children_of(id)
@@ -125,17 +136,19 @@ module DataMapa
       end if @simple_attr
     end
 
-    def r2o_ref(relational, object)
+    def r2o_ref(ar, object)
       @ref_attr.each do |attr, mapper|
+        model = mapper.find!(ar.send("#{attr}_id"))
+
         setter = "#{attr}="
-        object.send(setter, mapper.to_model(relational.send(attr)))
+        object.send(setter, model)
       end if @ref_attr
     end
 
     def r2o_collection(ar, model, attributes)
       attributes.each do |attr|
         ar_items = @collection_attr[attr].where("#{model_name}_id".to_sym => ar.id)
-        model_items = ar_items.map {|i| @collection_attr[attr].to_model(i)}
+        model_items = ar_items.map {|i| @collection_attr[attr].model_for(i)}
         model.send("#{attr}=", model_items)
       end
     end

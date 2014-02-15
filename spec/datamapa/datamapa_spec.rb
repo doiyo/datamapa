@@ -31,6 +31,7 @@ describe DataMapa do
       simple_attr attributes[:simple_attr] if attributes[:simple_attr]
       ref_attr attributes[:ref_attr] if attributes[:ref_attr]
       collection_attr attributes[:collection_attr] if attributes[:collection_attr]
+      semantic_key attributes[:semantic_key] if attributes[:semantic_key]
 
       # Provide name because this mapper class is anonymous
       define_singleton_method :name do
@@ -39,6 +40,7 @@ describe DataMapa do
     end
   end
 
+  let (:any_id) { 1 }
   let (:any_object) { Object.new }
 
   describe "simple attribute" do
@@ -49,14 +51,17 @@ describe DataMapa do
         'SimpleMapper',
         active_record_class: ar_class,
         creates_model_with: lambda { |rec| model_class.new },
-        simple_attr: [:id, :attribute]
+        simple_attr: [:attribute]
       )
     end
 
-    it "converts to model" do
-      ar = stub(id: 1, attribute: 'any string')
+    it "finds model" do
+      id = any_id
+      ar = stub(id: id, attribute: 'any string')
 
-      model = mapper.to_model(ar)
+      ar_class.stubs(:find).with(id).returns(ar)
+
+      model = mapper.find!(id)
 
       model.id.must_equal ar.id
       model.attribute.must_equal ar.attribute
@@ -80,25 +85,26 @@ describe DataMapa do
   describe "ref attribute" do
     let(:model_class) { class_with_attributes([:id, :object]) }
     let(:ar_class) { class_with_attributes([:id, :object_id]) }
+    let(:ref_mapper) { Mapper }
     let(:mapper) do
       mapper_class(
         'RefMapper',
         active_record_class: ar_class,
         creates_model_with: lambda { |rec| model_class.new },
-        simple_attr: [:id],
-        ref_attr: { object: Mapper }
+        ref_attr: { object: ref_mapper }
       )
     end
     
-    it "converts to model without option" do
-      ar = stub(id: 1, object: nil)
-      ref = any_object
-      Mapper.stubs(to_model: ref)
+    it "converts to model" do
+      object = any_object
+      ref_mapper.stubs(find!: object)
 
-      model = mapper.to_model(ar)
+      ar = ar_class.new(1)
+
+      model = mapper.model_for(ar)
 
       model.id.must_equal ar.id
-      model.object.must_equal ref
+      model.object.must_equal object
     end
 
     it "saves existing object" do
@@ -128,25 +134,11 @@ describe DataMapa do
         collection_attr: { collection: Mapper }
       )
     end 
-    
-    it "converts to model with option" do
-      Mapper.stubs(where: [any_object, any_object])
-      model_instance = any_object
-      Mapper.stubs(to_model: model_instance)
-
-      ar = stub(id: 1)
-
-      model = mapper.to_model(ar, include: [:collection])
-
-      model.id.must_equal ar.id
-      model.collection[0].must_equal model_instance
-      model.collection[1].must_equal model_instance
-    end
 
     it "does not convert to model without option" do
       ar = stub(id: 1, collection: [any_object])
 
-      model = mapper.to_model(ar)
+      model = mapper.model_for(ar)
 
       model.id.must_equal ar.id
       model.collection.must_equal nil
@@ -185,14 +177,13 @@ describe DataMapa do
         'AttributeMapper',
         active_record_class: ar_class,
         creates_model_with: lambda { |rec| model_class.new },
-        simple_attr: [:id]
       )
     end
     
     it "converts to model" do
       ar = stub(id: 1, attribute: 'any string')
 
-      model = mapper.to_model(ar)
+      model = mapper.model_for(ar)
 
       model.id.must_equal ar.id
     end
@@ -226,7 +217,7 @@ describe DataMapa do
     it "converts to model" do
       ar = stub(id: 1)
 
-      model = mapper.to_model(ar)
+      model = mapper.model_for(ar)
 
       model.id.must_equal ar.id
       model.attribute.must_equal nil
@@ -243,6 +234,40 @@ describe DataMapa do
       mapper.save!(model)
 
       ar.id.must_equal model.id
+    end
+  end
+
+  describe "semantic keys" do
+    let(:ar_class)    { class_with_attributes([:id, :key1, :key2, :field]) }
+    let(:model_class) { class_with_attributes([:id, :key1, :key2, :field]) }
+    let(:mapper) do
+      mapper_class(
+        'SemanticMapper',
+        active_record_class: ar_class,
+        creates_model_with: lambda { |ar| model_class.new },
+        simple_attr: [:key1, :key2, :field],
+        semantic_key: [:key1, :key2]
+      )
+    end
+    
+    it "saves existing object" do
+      id = any_id
+      model = model_class.new
+      model.key1 = 10
+      model.key2 = 20
+      model.field = 'any string'
+
+      ar = ar_class.new(id)
+      ar.expects(:save!)
+
+      ar_class.stubs(:find).with(key1: 10, key2: 20).returns(ar)
+
+      mapper.save!(model)
+
+      ar.id.must_equal id
+      ar.key1.must_equal model.key1
+      ar.key2.must_equal model.key2
+      ar.field.must_equal model.field
     end
   end
 end
