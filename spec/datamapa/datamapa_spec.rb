@@ -55,20 +55,21 @@ describe DataMapa do
       )
     end
 
-    it "finds model" do
+    it "maps when finding" do
       id = any_id
-      ar = stub(id: id, attribute: 'any string')
+      result_ar = ar_class.new(id)
+      result_ar.attribute = 'any string'
 
-      ar_class.stubs(:find).with(id).returns(ar)
+      ar_class.stubs(:find).with(id).returns(result_ar)
 
       model = mapper.find!(id)
 
-      model.id.must_equal ar.id
-      model.attribute.must_equal ar.attribute
+      model.id.must_equal result_ar.id
+      model.attribute.must_equal result_ar.attribute
     end
 
-    it "saves existing object" do
-      model = model_class.new(1)
+    it "maps when saving existing object" do
+      model = model_class.new(any_id)
       model.attribute = 'any string'
       ar = ar_class.new
       ar.expects(:save!)
@@ -83,8 +84,8 @@ describe DataMapa do
   end
 
   describe "ref attribute" do
-    let(:model_class) { class_with_attributes([:id, :object]) }
-    let(:ar_class) { class_with_attributes([:id, :object_id]) }
+    let(:model_class) { class_with_attributes([:id, :object   ]) }
+    let(:ar_class)    { class_with_attributes([:id, :object_id]) }
     let(:ref_mapper) { Mapper }
     let(:mapper) do
       mapper_class(
@@ -95,11 +96,11 @@ describe DataMapa do
       )
     end
     
-    it "converts to model" do
+    it "maps ar to model" do
       object = any_object
-      ref_mapper.stubs(find!: object)
+      ref_mapper.stubs(:find!).returns(object)
 
-      ar = ar_class.new(1)
+      ar = ar_class.new(any_id)
 
       model = mapper.model_for(ar)
 
@@ -107,9 +108,10 @@ describe DataMapa do
       model.object.must_equal object
     end
 
-    it "saves existing object" do
-      model = model_class.new(1)
+    it "maps when saving existing object" do
+      model = model_class.new(any_id)
       model.object = stub(id: 10)
+
       ar = ar_class.new
       ar.expects(:save!)
 
@@ -134,8 +136,9 @@ describe DataMapa do
       )
     end 
 
-    it "does not convert colleciton to model" do
-      ar = stub(id: 1, collection: [any_object])
+    it "does not map colleciton to model" do
+      ar = ar_class.new(any_id)
+      ar.collection = [any_object]
 
       model = mapper.model_for(ar)
 
@@ -154,7 +157,7 @@ describe DataMapa do
     #end
 
     it "does not save colleciton" do
-      model = model_class.new(1)
+      model = model_class.new(any_id)
       model.collection = [any_object]
 
       ar = ar_class.new
@@ -179,16 +182,17 @@ describe DataMapa do
       )
     end
     
-    it "converts to model" do
-      ar = stub(id: 1, attribute: 'any string')
+    it "maps ar to model" do
+      ar = ar_class.new(any_id)
+      ar.attribute = 'any string'
 
       model = mapper.model_for(ar)
 
       model.id.must_equal ar.id
     end
 
-    it "saves existing object" do
-      model = model_class.new(1)
+    it "maps when saving existing object" do
+      model = model_class.new(any_id)
 
       ar = ar_class.new
       ar.expects(:save!)
@@ -212,8 +216,8 @@ describe DataMapa do
       )
     end
     
-    it "converts to model" do
-      ar = stub(id: 1)
+    it "maps ar to model" do
+      ar = ar_class.new(any_id)
 
       model = mapper.model_for(ar)
 
@@ -221,8 +225,8 @@ describe DataMapa do
       model.attribute.must_equal nil
     end
 
-    it "saves existing object" do
-      model = model_class.new(1)
+    it "maps when saving existing object" do
+      model = model_class.new(any_id)
       model.attribute = 'any string'
 
       ar = ar_class.new
@@ -248,7 +252,7 @@ describe DataMapa do
       )
     end
     
-    it "saves existing object" do
+    it "maps when saving existing object" do
       id = any_id
       model = model_class.new
       model.key1 = 10
