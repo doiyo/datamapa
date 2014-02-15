@@ -130,12 +130,11 @@ describe DataMapa do
         'CollectionMapper',
         active_record_class: ar_class,
         creates_model_with: lambda { |rec| model_class.new },
-        simple_attr: [:id],
         collection_attr: { collection: Mapper }
       )
     end 
 
-    it "does not convert to model without option" do
+    it "does not convert colleciton to model" do
       ar = stub(id: 1, collection: [any_object])
 
       model = mapper.model_for(ar)
@@ -154,7 +153,7 @@ describe DataMapa do
     #  ar.attribute[1].must_equal attribute
     #end
 
-    it "does not save without option" do
+    it "does not save colleciton" do
       model = model_class.new(1)
       model.collection = [any_object]
 
@@ -210,7 +209,6 @@ describe DataMapa do
         'AttributeMapper',
         active_record_class: ar_class,
         creates_model_with: lambda { |rec| model_class.new },
-        simple_attr: [:id]
       )
     end
     
