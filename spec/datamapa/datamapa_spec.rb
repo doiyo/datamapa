@@ -19,8 +19,6 @@ describe DataMapa do
       def initialize(id=nil)
         @id = id
       end
-      def save!
-      end
     end
   end
 
