@@ -51,7 +51,6 @@ module DataMapa
       r2o_simple(ar, model)
       r2o_ref(ar, model)
       r2o_collection(ar, model, @composed_of) if @composed_of
-
       model
     end
 
@@ -145,10 +144,13 @@ module DataMapa
       end if @ref_attr
     end
 
+    def where_clause_for_references_to(id)
+      {"#{model_name}_id".to_sym => id}
+    end
+
     def r2o_collection(ar, model, attributes)
-      attributes.each do |attr|
-        ar_items = @collection_attr[attr].where("#{model_name}_id".to_sym => ar.id)
-        model_items = ar_items.map {|i| @collection_attr[attr].model_for(i)}
+      attributes.each do |attr, mapper|
+        model_items = mapper.where(where_clause_for_references_to(ar.id))
         model.send("#{attr}=", model_items)
       end
     end

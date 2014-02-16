@@ -24,4 +24,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'minitest', '~> 4.2'
   spec.add_development_dependency 'mocha', '~> 0.14.0'
   spec.add_development_dependency 'bourne', '~> 1.5.0'
+  spec.add_development_dependency 'byebug', '~> 2.6.0'
 end

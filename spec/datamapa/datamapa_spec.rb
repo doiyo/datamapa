@@ -7,7 +7,7 @@ require 'datamapa'
 
 describe DataMapa do
 
-  class Mapper
+  class MapperStub
   end
 
   def class_with_attributes(attributes)
@@ -32,6 +32,7 @@ describe DataMapa do
       ref_attr attributes[:ref_attr] if attributes[:ref_attr]
       collection_attr attributes[:collection_attr] if attributes[:collection_attr]
       semantic_key attributes[:semantic_key] if attributes[:semantic_key]
+      composed_of attributes[:composed_of] if attributes[:composed_of]
 
       # Provide name because this mapper class is anonymous
       define_singleton_method :name do
@@ -86,7 +87,7 @@ describe DataMapa do
   describe "ref attribute" do
     let(:model_class) { class_with_attributes([:id, :object   ]) }
     let(:ar_class)    { class_with_attributes([:id, :object_id]) }
-    let(:ref_mapper) { Mapper }
+    let(:ref_mapper) { MapperStub }
     let(:mapper) do
       mapper_class(
         'RefMapper',
@@ -132,7 +133,7 @@ describe DataMapa do
         'CollectionMapper',
         active_record_class: ar_class,
         creates_model_with: lambda { |rec| model_class.new },
-        collection_attr: { collection: Mapper }
+        collection_attr: { collection: MapperStub }
       )
     end 
 
@@ -270,6 +271,34 @@ describe DataMapa do
       ar.key1.must_equal model.key1
       ar.key2.must_equal model.key2
       ar.field.must_equal model.field
+    end
+  end
+
+  describe "composition" do
+    let(:ar_class)    { class_with_attributes([:id, :parts]) }
+    let(:model_class) { class_with_attributes([:id, :parts]) }
+    let(:parts_mapper) { MapperStub }
+    let(:mapper) do
+      mapper_class(
+        'CompositeMapper',
+        active_record_class: ar_class,
+        creates_model_with: lambda { |ar| model_class.new },
+        composed_of: { parts: parts_mapper }
+      )
+    end
+    
+    it "maps when creating model for record" do
+      id = any_id
+      part = any_object
+
+      ar = ar_class.new(id)
+
+      parts_mapper.stubs(:where).with(composite_id: id).returns([part])
+
+      model = mapper.model_for(ar)
+
+      model.id.must_equal id
+      model.parts.must_equal [part]
     end
   end
 end
