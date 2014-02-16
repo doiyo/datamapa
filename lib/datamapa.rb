@@ -80,6 +80,57 @@ module DataMapa
       ar
     end
 
+    def create!(model, extras={})
+      begin
+        attributes = {}
+
+        @simple_attr.each do |attr|
+          attributes[:"#{attr.to_s.chomp('?')}"] = model.send(attr)
+        end if @simple_attr
+
+        @ref_attr.each_key do |attr|
+          ref = model.send(attr)
+          attributes[:"#{attr.to_s.chomp('?')}_id"] = ref.id unless ref.nil?
+        end if @ref_attr
+
+        extras.each_pair { |key, value| attributes[:"#{key}"] = value }
+
+        ar = @ar_class.create!(attributes)
+        model.send(:id=, ar.id)
+
+        @composed_of.each do |parts, mapper|
+          mapper.create_parts!(model.send(parts), model.id)
+        end if @composed_of
+      rescue ActiveRecord::StatementInvalid => e
+        raise DataMapa::PersistenceError, e.message
+      end
+    end
+
+    def update(model, extras={})
+      begin
+        attributes = {}
+
+        @simple_attr.each do |attr|
+          attributes[:"#{attr.to_s.chomp('?')}"] = model.send(attr)
+        end if @simple_attr
+
+        @ref_attr.each_key do |attr|
+          ref = model.send(attr)
+          attributes[:"#{attr.to_s.chomp('?')}_id"] = ref.id unless ref.nil?
+        end if @ref_attr
+
+        extras.each_pair { |key, value| attributes[:"#{key}"] = value }
+
+        @ar_class.update(model.id, attributes)
+
+        @composed_of.each do |parts, mapper|
+          mapper.update_parts!(model.send(parts), model.id)
+        end if @composed_of
+      rescue ActiveRecord::StatementInvalid => e
+        raise DataMapa::PersistenceError, e.message
+      end
+    end
+
     def save!(model, extras={})
       begin
         ar = ar_for_saving_model(model)
@@ -101,6 +152,29 @@ module DataMapa
     def save_parts!(parts, parent_id)
       parts.each_with_index do |item, i|
         save!(item, "#{@composes}_id".to_sym => parent_id, :index => i)
+      end
+    end
+
+    def create_parts!(parts, parent_id)
+      parts.each_with_index do |item, i|
+        create!(item, "#{@composes}_id".to_sym => parent_id, :index => i)
+      end
+    end
+
+    def composes_column
+      "#{@composes}_id".to_sym
+    end
+
+    def update_parts!(parts, parent_id)
+      existing_ids = parts.map(&:id).reject { |id| id.nil? }
+      @ar_class.where(composes_column => parent_id).where.not(id: existing_ids).delete_all
+
+      parts.each_with_index do |item, i|
+        if item.id.nil?
+          create!(item, composes_column => parent_id, :index => i)
+        else
+          update(item, composes_column => parent_id, :index => i)
+        end
       end
     end
 

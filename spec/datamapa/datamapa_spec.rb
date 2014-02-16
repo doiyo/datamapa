@@ -22,6 +22,9 @@ describe DataMapa do
 
       def save!
       end
+
+      def self.update(id, hash)
+      end
     end
   end
 
@@ -113,6 +116,29 @@ describe DataMapa do
       ar.attribute.must_equal model.attribute
       model.id.must_equal id
     end
+
+    it "maps when creating object" do
+      model = model_class.new
+      model.attribute = 'any string'
+
+      id = any_id
+      ar = ar_class.new(id)
+      ar_class.expects(:create!).with(attribute: model.attribute).returns(ar)
+
+      mapper.create!(model)
+
+      model.id.must_equal id
+    end
+
+    it "maps when updating object" do
+      id = any_id
+      model = model_class.new(id)
+      model.attribute = 'any string'
+
+      ar_class.expects(:update).with(id, attribute: model.attribute)
+
+      mapper.update(model)
+    end
   end
 
   describe "ref attribute" do
@@ -153,6 +179,20 @@ describe DataMapa do
 
       ar.id.must_equal model.id
       ar.object_id.must_equal model.object.id
+    end
+
+    it "maps when creating object" do
+      model = model_class.new
+      model.object = stub(id: 10)
+
+      id = any_id
+      ar = ar_class.new(id)
+
+      ar_class.expects(:create!).with(object_id: model.object.id).returns(ar)
+
+      mapper.create!(model)
+
+      model.id.must_equal id
     end
   end
 
@@ -303,14 +343,17 @@ describe DataMapa do
       ar.key2.must_equal model.key2
       ar.field.must_equal model.field
     end
+
   end
 
   describe "composition" do
-    let(:parts_ar_class) { ar_class_with_attributes([:id]) }
+    let(:parts_ar_class)    { ar_class_with_attributes([:id, :simple]) }
+    let(:parts_model_class) { ar_class_with_attributes([:id, :simple]) }
     let(:parts_mapper) do
       mapper_class(
         'PartsMapper',
         active_record_class: parts_ar_class,
+        simple_attr: [:simple],
         composes: 'composite'
       )
     end
@@ -353,6 +396,47 @@ describe DataMapa do
       parts_mapper.expects(:save!).with(part, composite_id: id, index: 0)
 
       mapper.save!(model)
+    end
+
+    it "creates parts when creating object" do
+      part = parts_ar_class.new
+      part.simple = 'any string'
+
+      model = model_class.new
+      model.parts = [part]
+
+      id = any_id
+      ar = ar_class.new(id)
+      ar_class.stubs(:create!).returns(ar)
+
+      parts_ar = parts_ar_class.new(any_id)
+      parts_ar_class.expects(:create!).with(simple: part.simple, composite_id: id, index: 0).returns(parts_ar)
+
+      mapper.create!(model)
+    end
+
+    it "updates parts when updating object" do
+      part1 = parts_model_class.new(10)
+      part1.simple = 'existing part'
+
+      part2 = parts_model_class.new
+      part2.simple = 'new part'
+
+      id = any_id
+      model = model_class.new(id)
+      model.parts = [part1, part2]
+
+      parts_ar_class.expects(:where).with(composite_id: id).returns(parts_ar_class)
+      parts_ar_class.expects(:where).with().returns(parts_ar_class)
+      parts_ar_class.expects(:not).with(id: [part1.id]).returns(parts_ar_class)
+      parts_ar_class.expects(:delete_all)
+
+      parts_ar_class.expects(:update).with(part1.id, simple: part1.simple, composite_id: id, index: 0)
+
+      ar = parts_ar_class.new(id)
+      parts_ar_class.expects(:create!).with(simple: part2.simple, composite_id: id, index: 1).returns(ar)
+
+      mapper.update(model)
     end
   end
 end
