@@ -20,9 +20,6 @@ describe DataMapa do
         @id = id
       end
 
-      def save!
-      end
-
       def self.update(id, hash)
       end
     end
@@ -75,7 +72,7 @@ describe DataMapa do
       )
     end
 
-    it "maps when finding" do
+    it "finds model" do
       id = any_id
       result_ar = ar_class.new(id)
       result_ar.attribute = 'any string'
@@ -88,36 +85,7 @@ describe DataMapa do
       model.attribute.must_equal result_ar.attribute
     end
 
-    it "maps when saving existing object" do
-      model = model_class.new(any_id)
-      model.attribute = 'any string'
-      ar = ar_class.new
-      ar.expects(:save!)
-
-      ar_class.stubs(:find).returns(ar)
-
-      mapper.save!(model)
-
-      ar.id.must_equal model.id
-      ar.attribute.must_equal model.attribute
-    end
-
-    it "maps when saving new object" do
-      model = model_class.new
-      model.attribute = 'any string'
-
-      id = any_id
-      ar = ar_class.new(id)
-      ar.expects(:save!)
-      ar_class.stubs(:new).returns(ar)
-
-      mapper.save!(model)
-
-      ar.attribute.must_equal model.attribute
-      model.id.must_equal id
-    end
-
-    it "maps when creating object" do
+    it "creates object" do
       model = model_class.new
       model.attribute = 'any string'
 
@@ -130,7 +98,7 @@ describe DataMapa do
       model.id.must_equal id
     end
 
-    it "maps when updating object" do
+    it "updates object" do
       id = any_id
       model = model_class.new(id)
       model.attribute = 'any string'
@@ -138,6 +106,28 @@ describe DataMapa do
       ar_class.expects(:update).with(id, attribute: model.attribute)
 
       mapper.update(model)
+    end
+
+    it "saves new object" do
+      model = model_class.new
+      model.attribute = 'any string'
+
+      id = any_id
+      ar = ar_class.new(id)
+      ar_class.expects(:create!).with(attribute: model.attribute).returns(ar)
+
+      mapper.save!(model)
+
+      model.id.must_equal id
+    end
+
+    it "saves existing object" do
+      model = model_class.new(any_id)
+      model.attribute = 'any string'
+
+      ar_class.expects(:update).with(model.id, attribute: model.attribute)
+
+      mapper.save!(model)
     end
   end
 
@@ -154,7 +144,7 @@ describe DataMapa do
       )
     end
     
-    it "maps ar to model" do
+    it "creates model from ar" do
       object = any_object
       ref_mapper.stubs(:find!).returns(object)
 
@@ -164,21 +154,6 @@ describe DataMapa do
 
       model.id.must_equal ar.id
       model.object.must_equal object
-    end
-
-    it "maps when saving existing object" do
-      model = model_class.new(any_id)
-      model.object = stub(id: 10)
-
-      ar = ar_class.new
-      ar.expects(:save!)
-
-      ar_class.stubs(:find).returns(ar)
-
-      mapper.save!(model)
-
-      ar.id.must_equal model.id
-      ar.object_id.must_equal model.object.id
     end
 
     it "maps when creating object" do
@@ -208,7 +183,7 @@ describe DataMapa do
       )
     end 
 
-    it "does not map collection to model" do
+    it "instantialtes model without collection" do
       ar = ar_class.new(any_id)
       ar.collection = [any_object]
 
@@ -218,28 +193,17 @@ describe DataMapa do
       model.collection.must_equal nil
     end
 
-    #it "converts to AR with option" do
-    #  model = stub(id: nil, attribute: [Object.new, Object.new])
-
-    #  ar = mapper.to_ar(model, include: [:attribute])
-
-    #  ar.id.must_equal model.id
-    #  ar.attribute[0].must_equal attribute
-    #  ar.attribute[1].must_equal attribute
-    #end
-
-    it "does not save colleciton" do
-      model = model_class.new(any_id)
+    it "creates model without colleciton" do
+      model = model_class.new
       model.collection = [any_object]
 
-      ar = ar_class.new
-      ar.expects(:save!)
-      ar_class.stubs(:find).returns(ar)
+      id = any_id
+      ar = ar_class.new(id)
+      ar_class.expects(:create!).with({}).returns(ar)
 
-      mapper.save!(model)
+      mapper.create!(model)
 
-      ar.id.must_equal model.id
-      ar.collection.must_equal nil
+      model.id.must_equal id
     end
   end
 
@@ -254,7 +218,7 @@ describe DataMapa do
       )
     end
     
-    it "maps ar to model" do
+    it "instantiates model" do
       ar = ar_class.new(any_id)
       ar.attribute = 'any string'
 
@@ -263,17 +227,16 @@ describe DataMapa do
       model.id.must_equal ar.id
     end
 
-    it "maps when saving existing object" do
-      model = model_class.new(any_id)
+    it "creates model" do
+      model = model_class.new
 
-      ar = ar_class.new
-      ar.expects(:save!)
-      ar_class.stubs(:find).returns(ar)
+      id = any_id
+      ar = ar_class.new(id)
+      ar_class.expects(:create!).with({}).returns(ar)
 
-      mapper.save!(model)
+      mapper.create!(model)
 
-      ar.id.must_equal model.id
-      ar.attribute.must_equal nil
+      model.id.must_equal id
     end
   end
 
@@ -288,7 +251,7 @@ describe DataMapa do
       )
     end
     
-    it "maps ar to model" do
+    it "instantiates model" do
       ar = ar_class.new(any_id)
 
       model = mapper.model_for(ar)
@@ -297,17 +260,17 @@ describe DataMapa do
       model.attribute.must_equal nil
     end
 
-    it "maps when saving existing object" do
-      model = model_class.new(any_id)
+    it "creates model" do
+      model = model_class.new
       model.attribute = 'any string'
 
-      ar = ar_class.new
-      ar.expects(:save!)
-      ar_class.stubs(:find).returns(ar)
+      id = any_id
+      ar = ar_class.new(id)
+      ar_class.expects(:create!).with({}).returns(ar)
 
-      mapper.save!(model)
+      mapper.create!(model)
 
-      ar.id.must_equal model.id
+      model.id.must_equal id
     end
   end
 
@@ -324,24 +287,38 @@ describe DataMapa do
       )
     end
     
-    it "maps when saving existing object" do
-      id = any_id
+    it "saves new object" do
       model = model_class.new
       model.key1 = 10
       model.key2 = 20
       model.field = 'any string'
 
-      ar = ar_class.new(id)
-      ar.expects(:save!)
+      ar_class.stubs(:find)
 
-      ar_class.stubs(:find).with(key1: 10, key2: 20).returns(ar)
+      id = any_id
+      ar = ar_class.new(id)
+      ar_class.expects(:create!).with(key1: model.key1, key2: model.key2, field: model.field).returns(ar)
 
       mapper.save!(model)
 
-      ar.id.must_equal id
-      ar.key1.must_equal model.key1
-      ar.key2.must_equal model.key2
-      ar.field.must_equal model.field
+      model.id.must_equal id
+    end
+
+    it "saves existing object" do
+      model = model_class.new
+      model.key1 = 10
+      model.key2 = 20
+      model.field = 'any string'
+
+      id = any_id
+      ar = ar_class.new(id)
+
+      ar_class.stubs(:find).with(key1: model.key1, key2: model.key2).returns(ar)
+      ar_class.expects(:update).with(id, key1: model.key1, key2: model.key2, field: model.field)
+
+      mapper.save!(model)
+
+      model.id.must_equal id
     end
 
   end
@@ -369,7 +346,7 @@ describe DataMapa do
       )
     end
     
-    it "maps when creating model for record" do
+    it "instantiates model with parts" do
       id = any_id
       part = any_object
 
@@ -381,21 +358,6 @@ describe DataMapa do
 
       model.id.must_equal id
       model.parts.must_equal [part]
-    end
-
-    it "saves part" do
-      part = any_object
-
-      model = model_class.new
-      model.parts = [part]
-
-      id = any_id
-      ar = ar_class.new(id)
-      ar_class.stubs(:new).returns(ar)
-
-      parts_mapper.expects(:save!).with(part, composite_id: id, index: 0)
-
-      mapper.save!(model)
     end
 
     it "creates parts when creating object" do

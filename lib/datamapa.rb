@@ -132,26 +132,11 @@ module DataMapa
     end
 
     def save!(model, extras={})
-      begin
-        ar = ar_for_saving_model(model)
-
-        o2r(model, ar)
-
-        extras.each_pair { |key, value| ar.send("#{key}=", value) }
-        ar.save!
-        model.send(:id=, ar.id)
-
-        @composed_of.each do |parts, mapper|
-          mapper.save_parts!(model.send(parts), model.id)
-        end if @composed_of
-      rescue ActiveRecord::StatementInvalid => e
-        raise DataMapa::PersistenceError, e.message
-      end
-    end
-
-    def save_parts!(parts, parent_id)
-      parts.each_with_index do |item, i|
-        save!(item, "#{@composes}_id".to_sym => parent_id, :index => i)
+      load_id_with_semantic_key(model) unless @semantic_key.nil?
+      if model.id.nil?
+        create!(model)
+      else
+        update(model)
       end
     end
 
@@ -191,6 +176,16 @@ module DataMapa
       r2o(ar, model)
       model.id = ar.id
       model
+    end
+
+    def load_id_with_semantic_key(model)
+      clause = @semantic_key.inject({}) do |memo, attr|
+        memo[attr] = model.send(attr)
+        memo
+      end
+
+      ar = @ar_class.find(clause)
+      model.id = ar.id unless ar.nil?
     end
 
     protected
