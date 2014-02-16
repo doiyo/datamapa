@@ -7,7 +7,9 @@ module DataMapa
   end
 
   module ClassMethods
+
     # Declarative methods
+    
     def active_record_class(klass)
       @ar_class = klass
     end
@@ -41,19 +43,7 @@ module DataMapa
     end
 
     # Public methods
-    def o2r(model, ar, options={})
-      o2r_attr(model, ar)
-      o2r_ref(model, ar)
-      o2r_collection(model, ar, options[:include]) if options[:include]
-    end
-
-    def r2o(ar, model)
-      r2o_simple(ar, model)
-      r2o_ref(ar, model)
-      r2o_collection(ar, model, @composed_of) if @composed_of
-      model
-    end
-
+    
     def find!(id)
       begin
         ar = @ar_class.find(id)
@@ -70,30 +60,9 @@ module DataMapa
       end
     end
 
-    def ar_for_saving_model(model)
-      if model.id.nil?
-        ar = find_ar_with_semantic_key(model) unless @semantic_key.nil?
-        ar ||= @ar_class.new
-      else
-        ar = @ar_class.find(model.id)
-      end
-      ar
-    end
-
     def create!(model, extras={})
       begin
-        attributes = {}
-
-        @simple_attr.each do |attr|
-          attributes[:"#{attr.to_s.chomp('?')}"] = model.send(attr)
-        end if @simple_attr
-
-        @ref_attr.each_key do |attr|
-          ref = model.send(attr)
-          attributes[:"#{attr.to_s.chomp('?')}_id"] = ref.id unless ref.nil?
-        end if @ref_attr
-
-        extras.each_pair { |key, value| attributes[:"#{key}"] = value }
+        attributes = attribute_hash(model, extras)
 
         ar = @ar_class.create!(attributes)
         model.send(:id=, ar.id)
@@ -108,18 +77,7 @@ module DataMapa
 
     def update(model, extras={})
       begin
-        attributes = {}
-
-        @simple_attr.each do |attr|
-          attributes[:"#{attr.to_s.chomp('?')}"] = model.send(attr)
-        end if @simple_attr
-
-        @ref_attr.each_key do |attr|
-          ref = model.send(attr)
-          attributes[:"#{attr.to_s.chomp('?')}_id"] = ref.id unless ref.nil?
-        end if @ref_attr
-
-        extras.each_pair { |key, value| attributes[:"#{key}"] = value }
+        attributes = attribute_hash(model, extras)
 
         @ar_class.update(model.id, attributes)
 
@@ -140,29 +98,6 @@ module DataMapa
       end
     end
 
-    def create_parts!(parts, parent_id)
-      parts.each_with_index do |item, i|
-        create!(item, "#{@composes}_id".to_sym => parent_id, :index => i)
-      end
-    end
-
-    def composes_column
-      "#{@composes}_id".to_sym
-    end
-
-    def update_parts!(parts, parent_id)
-      existing_ids = parts.map(&:id).reject { |id| id.nil? }
-      @ar_class.where(composes_column => parent_id).where.not(id: existing_ids).delete_all
-
-      parts.each_with_index do |item, i|
-        if item.id.nil?
-          create!(item, composes_column => parent_id, :index => i)
-        else
-          update(item, composes_column => parent_id, :index => i)
-        end
-      end
-    end
-
     def delete!(id)
       @composed_of.each do |part, mapper|
         mapper.delete_children_of(id)
@@ -178,6 +113,50 @@ module DataMapa
       model
     end
 
+    protected
+
+    def create_parts!(parts, parent_id)
+      parts.each_with_index do |item, i|
+        create!(item, "#{@composes}_id".to_sym => parent_id, :index => i)
+      end
+    end
+
+    def update_parts!(parts, parent_id)
+      existing_ids = parts.map(&:id).reject { |id| id.nil? }
+      @ar_class.where(composes_column => parent_id).where.not(id: existing_ids).delete_all
+
+      parts.each_with_index do |item, i|
+        if item.id.nil?
+          create!(item, composes_column => parent_id, :index => i)
+        else
+          update(item, composes_column => parent_id, :index => i)
+        end
+      end
+    end
+
+    def delete_children_of(id)
+      @ar_class.delete_all(["#{@composes}_id = ?", id])
+    end
+
+    private
+
+    def attribute_hash(model, extras)
+      attributes = {}
+
+      @simple_attr.each do |attr|
+        attributes[:"#{attr.to_s.chomp('?')}"] = model.send(attr)
+      end if @simple_attr
+
+      @ref_attr.each_key do |attr|
+        ref = model.send(attr)
+        attributes[:"#{attr.to_s.chomp('?')}_id"] = ref.id unless ref.nil?
+      end if @ref_attr
+
+      extras.each_pair { |key, value| attributes[:"#{key}"] = value }
+
+      attributes
+    end
+
     def load_id_with_semantic_key(model)
       clause = @semantic_key.inject({}) do |memo, attr|
         memo[attr] = model.send(attr)
@@ -188,21 +167,15 @@ module DataMapa
       model.id = ar.id unless ar.nil?
     end
 
-    protected
-
-    def delete_children_of(id)
-      @ar_class.delete_all(["#{@composes}_id = ?", id])
+    def composes_column
+      "#{@composes}_id".to_sym
     end
 
-    private
-
-    def find_ar_with_semantic_key(model)
-      clause = @semantic_key.inject({}) do |memo, attr|
-        memo[attr] = model.send(attr)
-        memo
-      end
-
-      @ar_class.find(clause)
+    def r2o(ar, model)
+      r2o_simple(ar, model)
+      r2o_ref(ar, model)
+      r2o_collection(ar, model, @composed_of) if @composed_of
+      model
     end
 
     def r2o_simple(relational, object)
@@ -235,28 +208,6 @@ module DataMapa
     def model_name
       name.chomp('Mapper').downcase
     end
-
-    def o2r_attr(object, relational)
-      @simple_attr.each do |attr|
-        relational.send("#{attr.to_s.chomp('?')}=", object.send(attr))
-      end if @simple_attr
-    end
-
-    def o2r_ref(object, relational)
-      @ref_attr.each_key do |attr|
-        ref = object.send(attr)
-        relational.send("#{attr.to_s.chomp('?')}_id=", ref.id) unless ref.nil?
-      end if @ref_attr
-    end
-
-    #def o2r_collection(object, relational, attributes)
-    #  attributes.each do |attr|
-    #    collection = object.send(attr).map do |item| 
-    #      @collection_attr[attr].to_ar(item)
-    #    end
-    #    relational.send("#{attr}=", collection)
-    #  end
-    #end
   end
 
   class PersistenceError < StandardError
