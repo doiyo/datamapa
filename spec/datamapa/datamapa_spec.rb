@@ -10,6 +10,21 @@ describe DataMapa do
   class MapperStub
   end
 
+  def ar_class_with_attributes(attributes)
+    Class.new do
+      attributes.each do |attr|
+        attr_accessor attr
+      end
+
+      def initialize(id=nil)
+        @id = id
+      end
+
+      def save!
+      end
+    end
+  end
+
   def class_with_attributes(attributes)
     Class.new do
       attributes.each do |attr|
@@ -33,6 +48,7 @@ describe DataMapa do
       collection_attr attributes[:collection_attr] if attributes[:collection_attr]
       semantic_key attributes[:semantic_key] if attributes[:semantic_key]
       composed_of attributes[:composed_of] if attributes[:composed_of]
+      composes attributes[:composes] if attributes[:composes]
 
       # Provide name because this mapper class is anonymous
       define_singleton_method :name do
@@ -45,7 +61,7 @@ describe DataMapa do
   let (:any_object) { Object.new }
 
   describe "simple attribute" do
-    let(:ar_class) { class_with_attributes([:id, :attribute]) }
+    let(:ar_class) { ar_class_with_attributes([:id, :attribute]) }
     let(:model_class) { class_with_attributes([:id, :attribute]) }
     let(:mapper) do
       mapper_class(
@@ -82,11 +98,26 @@ describe DataMapa do
       ar.id.must_equal model.id
       ar.attribute.must_equal model.attribute
     end
+
+    it "maps when saving new object" do
+      model = model_class.new
+      model.attribute = 'any string'
+
+      id = any_id
+      ar = ar_class.new(id)
+      ar.expects(:save!)
+      ar_class.stubs(:new).returns(ar)
+
+      mapper.save!(model)
+
+      ar.attribute.must_equal model.attribute
+      model.id.must_equal id
+    end
   end
 
   describe "ref attribute" do
     let(:model_class) { class_with_attributes([:id, :object   ]) }
-    let(:ar_class)    { class_with_attributes([:id, :object_id]) }
+    let(:ar_class)    { ar_class_with_attributes([:id, :object_id]) }
     let(:ref_mapper) { MapperStub }
     let(:mapper) do
       mapper_class(
@@ -126,7 +157,7 @@ describe DataMapa do
   end
 
   describe "collection attribute" do
-    let(:ar_class) { class_with_attributes([:id, :collection]) }
+    let(:ar_class) { ar_class_with_attributes([:id, :collection]) }
     let(:model_class) { class_with_attributes([:id, :collection]) }
     let(:mapper) do
       mapper_class(
@@ -137,7 +168,7 @@ describe DataMapa do
       )
     end 
 
-    it "does not map colleciton to model" do
+    it "does not map collection to model" do
       ar = ar_class.new(any_id)
       ar.collection = [any_object]
 
@@ -173,7 +204,7 @@ describe DataMapa do
   end
 
   describe "attribute in AR only" do
-    let(:ar_class) { class_with_attributes([:id, :attribute]) }
+    let(:ar_class) { ar_class_with_attributes([:id, :attribute]) }
     let(:model_class) { class_with_attributes([:id]) }
     let(:mapper) do
       mapper_class(
@@ -207,7 +238,7 @@ describe DataMapa do
   end
 
   describe "attribute in model only" do
-    let(:ar_class) { class_with_attributes([:id]) }
+    let(:ar_class) { ar_class_with_attributes([:id]) }
     let(:model_class) { class_with_attributes([:id, :attribute]) }
     let(:mapper) do
       mapper_class(
@@ -241,7 +272,7 @@ describe DataMapa do
   end
 
   describe "semantic keys" do
-    let(:ar_class)    { class_with_attributes([:id, :key1, :key2, :field]) }
+    let(:ar_class)    { ar_class_with_attributes([:id, :key1, :key2, :field]) }
     let(:model_class) { class_with_attributes([:id, :key1, :key2, :field]) }
     let(:mapper) do
       mapper_class(
@@ -275,9 +306,17 @@ describe DataMapa do
   end
 
   describe "composition" do
-    let(:ar_class)    { class_with_attributes([:id, :parts]) }
+    let(:parts_ar_class) { ar_class_with_attributes([:id]) }
+    let(:parts_mapper) do
+      mapper_class(
+        'PartsMapper',
+        active_record_class: parts_ar_class,
+        composes: 'composite'
+      )
+    end
+
+    let(:ar_class)    { ar_class_with_attributes([:id, :parts]) }
     let(:model_class) { class_with_attributes([:id, :parts]) }
-    let(:parts_mapper) { MapperStub }
     let(:mapper) do
       mapper_class(
         'CompositeMapper',
@@ -299,6 +338,21 @@ describe DataMapa do
 
       model.id.must_equal id
       model.parts.must_equal [part]
+    end
+
+    it "saves part" do
+      part = any_object
+
+      model = model_class.new
+      model.parts = [part]
+
+      id = any_id
+      ar = ar_class.new(id)
+      ar_class.stubs(:new).returns(ar)
+
+      parts_mapper.expects(:save!).with(part, composite_id: id, index: 0)
+
+      mapper.save!(model)
     end
   end
 end

@@ -70,22 +70,19 @@ module DataMapa
       end
     end
 
-    def find_ar_with_semantic_key(model)
-      clause = @semantic_key.inject({}) do |memo, attr|
-        memo[attr] = model.send(attr)
-        memo
+    def ar_for_saving_model(model)
+      if model.id.nil?
+        ar = find_ar_with_semantic_key(model) unless @semantic_key.nil?
+        ar ||= @ar_class.new
+      else
+        ar = @ar_class.find(model.id)
       end
-
-      @ar_class.find(clause)
+      ar
     end
 
     def save!(model, extras={})
       begin
-        if model.id.nil?
-          ar = find_ar_with_semantic_key(model) || @ar_class.new
-        else
-          ar = @ar_class.find(model.id)
-        end
+        ar = ar_for_saving_model(model)
 
         o2r(model, ar)
 
@@ -94,7 +91,7 @@ module DataMapa
         model.send(:id=, ar.id)
 
         @composed_of.each do |parts, mapper|
-          mapper.save_parts!(model.send(parts))
+          mapper.save_parts!(model.send(parts), model.id)
         end if @composed_of
       rescue ActiveRecord::StatementInvalid => e
         raise DataMapa::PersistenceError, e.message
@@ -129,6 +126,15 @@ module DataMapa
     end
 
     private
+
+    def find_ar_with_semantic_key(model)
+      clause = @semantic_key.inject({}) do |memo, attr|
+        memo[attr] = model.send(attr)
+        memo
+      end
+
+      @ar_class.find(clause)
+    end
 
     def r2o_simple(relational, object)
       @simple_attr.each do |attr|
