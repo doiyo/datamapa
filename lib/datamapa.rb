@@ -122,11 +122,13 @@ module DataMapa
       model
     end
 
-    private
+    protected
 
     def delete_children_of(id)
       @ar_class.delete_all(["#{@composes}_id = ?", id])
     end
+
+    private
 
     def r2o_simple(relational, object)
       @simple_attr.each do |attr|
