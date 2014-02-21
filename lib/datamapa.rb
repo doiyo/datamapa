@@ -162,8 +162,7 @@ module DataMapa
         memo[attr] = model.send(attr)
         memo
       end
-
-      ar = @ar_class.find(clause)
+      ar = @ar_class.find_by(clause)
       model.id = ar.id unless ar.nil?
     end
 

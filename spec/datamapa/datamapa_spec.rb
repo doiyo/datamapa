@@ -293,7 +293,7 @@ describe DataMapa do
       model.key2 = 20
       model.field = 'any string'
 
-      ar_class.stubs(:find)
+      ar_class.stubs(:find_by)
 
       id = any_id
       ar = ar_class.new(id)
@@ -313,7 +313,7 @@ describe DataMapa do
       id = any_id
       ar = ar_class.new(id)
 
-      ar_class.stubs(:find).with(key1: model.key1, key2: model.key2).returns(ar)
+      ar_class.stubs(:find_by).with(key1: model.key1, key2: model.key2).returns(ar)
       ar_class.expects(:update).with(id, key1: model.key1, key2: model.key2, field: model.field)
 
       mapper.save!(model)
