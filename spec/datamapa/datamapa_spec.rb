@@ -45,10 +45,10 @@ describe DataMapa do
       creates_model_with &attributes[:creates_model_with]
       simple_attr attributes[:simple_attr] if attributes[:simple_attr]
       ref_attr attributes[:ref_attr] if attributes[:ref_attr]
-      collection_attr attributes[:collection_attr] if attributes[:collection_attr]
       semantic_key attributes[:semantic_key] if attributes[:semantic_key]
       composed_of attributes[:composed_of] if attributes[:composed_of]
       composes attributes[:composes] if attributes[:composes]
+      aggregates attributes[:aggregates] if attributes[:aggregates]
 
       # Provide name because this mapper class is anonymous
       define_singleton_method :name do
@@ -171,31 +171,31 @@ describe DataMapa do
     end
   end
 
-  describe "collection attribute" do
-    let(:ar_class) { ar_class_with_attributes([:id, :collection]) }
-    let(:model_class) { class_with_attributes([:id, :collection]) }
+  describe "aggregation" do
+    let(:ar_class) { ar_class_with_attributes([:id, :components]) }
+    let(:model_class) { class_with_attributes([:id, :components]) }
     let(:mapper) do
       mapper_class(
-        'CollectionMapper',
+        'AggregateMapper',
         active_record_class: ar_class,
         creates_model_with: lambda { |rec| model_class.new },
-        collection_attr: { collection: MapperStub }
+        aggregates: { components: MapperStub }
       )
     end 
 
-    it "instantialtes model without collection" do
+    it "instantiates model without components" do
       ar = ar_class.new(any_id)
-      ar.collection = [any_object]
+      ar.components = [any_object]
 
       model = mapper.model_for(ar)
 
       model.id.must_equal ar.id
-      model.collection.must_equal nil
+      model.components.must_equal nil
     end
 
-    it "creates model without colleciton" do
+    it "persists new model without components" do
       model = model_class.new
-      model.collection = [any_object]
+      model.components = [any_object]
 
       id = any_id
       ar = ar_class.new(id)

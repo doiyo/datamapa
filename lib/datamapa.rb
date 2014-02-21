@@ -30,8 +30,8 @@ module DataMapa
       @ref_attr = attributes
     end
 
-    def collection_attr(attributes)
-      @collection_attr = attributes
+    def aggregates(components)
+      @aggregates = components
     end
 
     def composed_of(parts)
