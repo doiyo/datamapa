@@ -70,6 +70,7 @@ module DataMapa
         @composed_of.each do |parts, mapper|
           mapper.create_parts!(model.send(parts), model.id)
         end if @composed_of
+        model
       rescue ActiveRecord::StatementInvalid => e
         raise DataMapa::PersistenceError, e.message
       end

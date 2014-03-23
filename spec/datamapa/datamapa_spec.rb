@@ -93,9 +93,10 @@ describe DataMapa do
       ar = ar_class.new(id)
       ar_class.expects(:create!).with(attribute: model.attribute).returns(ar)
 
-      mapper.create!(model)
+      returned_model = mapper.create!(model)
 
       model.id.must_equal id
+      returned_model.id.must_equal id
     end
 
     it "updates object" do
