@@ -322,6 +322,27 @@ describe DataMapa do
       model.id.must_equal id
     end
 
+    it "checks existence with technical key" do
+      model = model_class.new
+      model.id = 1
+
+      ar_class.stubs(:exists?).with(model.id).returns(true)
+
+      mapper.exists?(model).must_equal true
+    end
+
+    it "checks existence with semantic key" do
+      model = model_class.new
+      model.key1 = 10
+      model.key2 = 20
+
+      tech_key = 100
+
+      ar_class.stubs(:find_by).with(key1: 10, key2: 20).returns(ar_class.new(tech_key))
+
+      mapper.exists?(model).must_equal true
+      model.id.must_equal tech_key
+    end
   end
 
   describe "composition" do

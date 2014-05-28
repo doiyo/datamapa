@@ -53,6 +53,15 @@ module DataMapa
       end
     end
 
+    def exists?(model)
+      if model.id.nil?
+        load_id_with_semantic_key(model) unless @semantic_key.nil?
+        !model.id.nil?
+      else
+        @ar_class.exists?(model.id)
+      end
+    end
+
     def where(clause)
       records = @ar_class.where(clause) 
       records.map do |ar|
