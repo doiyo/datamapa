@@ -111,7 +111,7 @@ module DataMapa
     def delete!(id)
       @composed_of.each do |part, mapper|
         mapper.delete_children_of(id)
-      end
+      end if @composed_of
 
       count = @ar_class.delete(id)
     end
