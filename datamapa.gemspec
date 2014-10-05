@@ -18,11 +18,11 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.add_runtime_dependency 'activerecord', '~> 4.0.2'
+  spec.add_runtime_dependency 'activerecord', '~> 4.0', '>= 4.0.2'
 
-  spec.add_development_dependency 'rake', '~> 10.1.1'
+  spec.add_development_dependency 'rake', '~> 10.1', '>= 10.1.1'
   spec.add_development_dependency 'minitest', '~> 4.2'
-  spec.add_development_dependency 'mocha', '~> 0.14.0'
-  spec.add_development_dependency 'bourne', '~> 1.5.0'
-  spec.add_development_dependency 'byebug', '~> 2.6.0'
+  spec.add_development_dependency 'mocha', '~> 0.14'
+  spec.add_development_dependency 'bourne', '~> 1.5'
+  spec.add_development_dependency 'byebug', '~> 2.6'
 end
